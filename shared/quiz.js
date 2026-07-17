@@ -17,9 +17,17 @@ export function parseTsv(text) {
 
 export function createQuestion(words, completedIds, random = Math.random, preferredWordId = null) {
   const remaining = words.filter((word) => !completedIds.includes(word.id));
-  if (!remaining.length) return null;
+  return questionFrom(words, remaining, random, preferredWordId);
+}
 
-  const answer = remaining.find((word) => word.id === preferredWordId) ?? remaining[Math.floor(random() * remaining.length)];
+export function createReviewQuestion(words, reviewIds, reviewedIds, random = Math.random, preferredWordId = null) {
+  const remaining = words.filter((word) => reviewIds.includes(word.id) && !reviewedIds.includes(word.id));
+  return questionFrom(words, remaining, random, preferredWordId);
+}
+
+function questionFrom(words, answers, random, preferredWordId) {
+  if (!answers.length) return null;
+  const answer = answers.find((word) => word.id === preferredWordId) ?? answers[Math.floor(random() * answers.length)];
   const distractors = [...new Map(words
     .filter((word) => word.id !== answer.id && word.definition !== answer.definition)
     .map((word) => [word.definition, word])).values()]

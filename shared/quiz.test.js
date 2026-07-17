@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createQuestion, parseTsv } from "./quiz.js";
+import { createQuestion, createReviewQuestion, parseTsv } from "./quiz.js";
 
 test("parses a header and word rows", () => {
   const input = ["Word\tDefinition", ...Array.from({ length: 12 }, (_, index) => `word-${index}\t释义-${index}`)].join("\n");
@@ -35,4 +35,12 @@ test("restores the paused word when its id is supplied", () => {
 test("returns no question after every word is completed", () => {
   const words = [{ id: "1", word: "a", definition: "一" }];
   assert.equal(createQuestion(words, ["1"]), null);
+});
+
+test("creates a review question only from the sampled mistake ids", () => {
+  const words = Array.from({ length: 12 }, (_, index) => ({
+    id: String(index + 1), word: `word-${index + 1}`, definition: `释义-${index + 1}`,
+  }));
+  const question = createReviewQuestion(words, ["3", "7"], ["3"], Math.random);
+  assert.equal(question.answer.id, "7");
 });
