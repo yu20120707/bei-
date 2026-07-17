@@ -16,7 +16,8 @@
   "build": {
     "appId": "com.local.wordtrainer",
     "productName": "单词选择器",
-    "files": ["electron/**/*", "renderer/**/*", "shared/**/*", "data/**/*", "package.json"],
+    "files": ["electron/**/*", "renderer/**/*", "shared/**/*", "data/**/*", "assets/**/*", "package.json"],
+    "icon": "assets/app-icon.ico",
     "win": {
       "target": ["portable"]
     }

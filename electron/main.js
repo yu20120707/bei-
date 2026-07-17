@@ -59,6 +59,7 @@ function createWindow() {
     minWidth: 860,
     minHeight: 620,
     backgroundColor: "#ffffff",
+    icon: path.join(root, "assets", "app-icon.png"),
     webPreferences: { preload: path.join(root, "electron", "preload.cjs"), contextIsolation: true },
   });
   window.loadFile(path.join(root, "renderer", "index.html"));
