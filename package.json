@@ -1,0 +1,27 @@
+{
+  "name": "word-trainer",
+  "version": "0.1.0",
+  "description": "Offline English-to-Chinese multiple-choice trainer",
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "package": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^36.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.local.wordtrainer",
+    "productName": "单词选择器",
+    "files": ["electron/**/*", "renderer/**/*", "shared/**/*", "data/**/*", "package.json"],
+    "win": {
+      "target": ["portable"]
+    }
+  },
+  "dependencies": {
+    "docx": "^9.7.1"
+  }
+}
