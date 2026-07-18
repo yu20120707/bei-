@@ -1,5 +1,5 @@
 {
-  "name": "word-trainer",
+  "name": "yuchen-word-trainer",
   "version": "0.1.0",
   "description": "Offline English-to-Chinese multiple-choice trainer",
   "type": "module",
@@ -14,7 +14,7 @@
     "electron-builder": "^26.0.0"
   },
   "build": {
-    "appId": "com.local.wordtrainer",
+    "appId": "com.yuchen.wordtrainer",
     "productName": "单词选择器",
     "files": ["electron/**/*", "renderer/**/*", "shared/**/*", "data/**/*", "assets/**/*", "package.json"],
     "icon": "assets/app-icon.ico",

@@ -1,5 +1,7 @@
 import { createQuestion, createReviewQuestion } from "../shared/quiz.js";
-import { mistakeBankFor, mistakeIds, recordMistake, recordReviewResult, sampleMistakeIds } from "../shared/mistakes.js";
+import { createAdvanceController } from "../shared/advance.js";
+import { migratePausedSessionMistakes } from "../shared/mistake-migration.js";
+import { mistakeIds, mistakeStreak, recordMistake, recordReviewResult, sampleMistakeIds } from "../shared/mistakes.js";
 import { endSession, sessionFor, sessionsFor, startSession } from "../shared/session.js";
 
 const app = document.querySelector("#app");
@@ -12,6 +14,7 @@ let locked = false;
 let report = null;
 let mode = "normal";
 let reviewIds = [];
+const advance = createAdvanceController();
 
 const progressFor = (deckId) => state.progress[deckId] ?? { completedIds: [], correct: 0, skipped: 0 };
 const activeDeck = () => state.decks.find((deck) => deck.id === activeDeckId);
@@ -20,23 +23,7 @@ const activeSessionKey = () => mode === "review" ? reviewSessionKey(activeDeckId
 
 async function persist() { await window.trainer.save(state); }
 
-function migrateSessionMistakes() {
-  let changed = false;
-  for (const [sessionId, session] of Object.entries(sessionsFor(state))) {
-    if (sessionId.endsWith(":mistake-review")) continue;
-    const deck = state.decks.find((item) => item.id === sessionId);
-    for (const wrong of session.wrongWords ?? []) {
-      const word = deck?.words.find((item) => item.word === wrong.word && item.definition === wrong.definition);
-      if (word && !mistakeBankFor(state, deck.id)[word.id]) {
-        recordMistake(state, deck.id, word.id);
-        changed = true;
-      }
-    }
-  }
-  return changed;
-}
-
-if (migrateSessionMistakes()) await persist();
+if (migratePausedSessionMistakes(state)) await persist();
 
 async function practice(preferredWordId = null) {
   const deck = activeDeck();
@@ -60,6 +47,7 @@ async function practice(preferredWordId = null) {
 }
 
 function home() {
+  advance.cancel();
   question = null;
   report = null;
   mode = "normal";
@@ -68,12 +56,14 @@ function home() {
 }
 
 async function pauseSession() {
+  advance.cancel();
   question = null;
   await persist();
   render();
 }
 
 async function finishSession() {
+  advance.cancel();
   const deck = activeDeck();
   const progress = progressFor(deck.id);
   const session = endSession(state, activeSessionKey());
@@ -97,6 +87,7 @@ async function finishSession() {
 }
 
 async function startReview() {
+  advance.cancel();
   const deck = activeDeck();
   const pausedSession = sessionFor(state, reviewSessionKey(deck.id));
   mode = "review";
@@ -161,10 +152,11 @@ function render() {
     const session = sessionFor(state, activeSessionKey());
     const current = mode === "review" ? (session?.reviewedIds?.length ?? 0) + 1 : done + 1;
     const total = mode === "review" ? reviewIds.length : deck.words.length;
+    const streak = mode === "review" ? mistakeStreak(state, deck.id, question.answer.id) : 0;
     app.innerHTML = `
       <header><button class="quiet" data-action="pause">暂停</button><button class="quiet" data-action="finish">结束并查看结果</button><span class="progress">${current} / ${total}</span><span class="brand">${mode === "review" ? `${deck.name} · 错题复习` : deck.name}</span></header>
       <section class="practice">
-        <div class="practice-intro"><p class="label">${mode === "review" ? "错题库复习：选择正确的中文释义" : "选择正确的中文释义"}</p><span>${mode === "review" ? "连续答对 3 次可掌握" : "12 个选项"}</span></div>
+        <div class="practice-intro"><p class="label">${mode === "review" ? "错题库复习：选择正确的中文释义" : "选择正确的中文释义"}</p><span>${mode === "review" ? `当前连续答对 ${streak} / 3` : "12 个选项"}</span></div>
         <h1 class="word">${question.answer.word}</h1>
         <div class="choices">${question.choices.map((choice, index) => `<button class="choice" data-choice="${index}">${choice}</button>`).join("")}</div>
       </section>`;
@@ -201,6 +193,7 @@ function bind() {
 async function answer(index, button) {
   if (locked) return;
   locked = true;
+  const answerToken = advance.token();
   const chosen = question.choices[index];
   const correct = chosen === question.answer.definition;
   const session = sessionFor(state, activeSessionKey());
@@ -223,7 +216,7 @@ async function answer(index, button) {
   }
   button.classList.add(correct ? "correct" : "wrong");
   await persist();
-  window.setTimeout(() => practice(), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 500);
+  advance.schedule(answerToken, () => practice(), window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 500);
 }
 
 fileInput.addEventListener("change", async () => {

@@ -4,9 +4,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseTsv } from "../shared/quiz.js";
 import { reportHtml, writeDocxReport } from "./report-export.js";
+import { loadStoredState, saveStoredState } from "./state-store.js";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const legacyStatePath = path.join(app.getPath("appData"), "word-trainer", "word-trainer-state.json");
+app.setPath("userData", path.join(app.getPath("appData"), "yuchen-word-trainer"));
 const statePath = () => path.join(app.getPath("userData"), "word-trainer-state.json");
+let stateSaveQueue = Promise.resolve();
 
 async function builtinDecks() {
   const loadDeck = async (id, name, file) => ({ id, name, words: parseTsv(await fs.readFile(path.join(root, "data", file), "utf8")) });
@@ -18,15 +22,15 @@ async function builtinDecks() {
 }
 
 async function loadState() {
-  let state;
-  try { state = JSON.parse(await fs.readFile(statePath(), "utf8")); }
-  catch { state = { decks: [], progress: {} }; }
+  const stored = await loadStoredState(statePath(), legacyStatePath);
+  const state = stored.state;
   state.decks ??= [];
   state.progress ??= {};
   for (const deck of await builtinDecks()) {
     if (!state.decks.some((item) => item.id === deck.id)) state.decks.push(deck);
     state.progress[deck.id] ??= { completedIds: [], correct: 0, skipped: 0 };
   }
+  if (stored.migrated) await saveStoredState(statePath(), state);
   return state;
 }
 
@@ -68,8 +72,8 @@ function createWindow() {
 app.whenReady().then(() => {
   ipcMain.handle("state:load", loadState);
   ipcMain.handle("state:save", async (_event, state) => {
-    await fs.mkdir(path.dirname(statePath()), { recursive: true });
-    await fs.writeFile(statePath(), JSON.stringify(state), "utf8");
+    stateSaveQueue = stateSaveQueue.catch(() => {}).then(() => saveStoredState(statePath(), state));
+    await stateSaveQueue;
   });
   ipcMain.handle("deck:parse", (_event, text) => parseTsv(text));
   ipcMain.handle("report:export", (_event, format, wrongWords) => exportWrongWords(format, wrongWords));

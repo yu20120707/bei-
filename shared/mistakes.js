@@ -12,6 +12,10 @@ export function recordMistake(state, deckId, wordId) {
   mistakeBankFor(state, deckId)[wordId] = { streak: 0 };
 }
 
+export function mistakeStreak(state, deckId, wordId) {
+  return mistakeBankFor(state, deckId)[wordId]?.streak ?? 0;
+}
+
 export function recordReviewResult(state, deckId, wordId, correct) {
   const bank = mistakeBankFor(state, deckId);
   if (!bank[wordId]) return { mastered: false, streak: 0 };
@@ -27,9 +31,22 @@ export function recordReviewResult(state, deckId, wordId, correct) {
 
 export function sampleMistakeIds(state, deckId, limit = 50, random = Math.random) {
   const ids = mistakeIds(state, deckId);
-  for (let index = ids.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    [ids[index], ids[swapIndex]] = [ids[swapIndex], ids[index]];
+  const bankIds = new Set(ids);
+  state.mistakeReviewCycles ??= {};
+  const cycle = state.mistakeReviewCycles[deckId] ??= { remainingIds: [], reviewedThisCycle: [] };
+  cycle.remainingIds = cycle.remainingIds.filter((id) => bankIds.has(id));
+  cycle.reviewedThisCycle = cycle.reviewedThisCycle.filter((id) => bankIds.has(id));
+  const knownIds = new Set([...cycle.remainingIds, ...cycle.reviewedThisCycle]);
+  cycle.remainingIds.push(...ids.filter((id) => !knownIds.has(id)));
+  if (!cycle.remainingIds.length) {
+    cycle.remainingIds = [...ids];
+    cycle.reviewedThisCycle = [];
   }
-  return ids.slice(0, limit);
+  for (let index = cycle.remainingIds.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [cycle.remainingIds[index], cycle.remainingIds[swapIndex]] = [cycle.remainingIds[swapIndex], cycle.remainingIds[index]];
+  }
+  const sample = cycle.remainingIds.splice(0, limit);
+  cycle.reviewedThisCycle.push(...sample);
+  return sample;
 }
