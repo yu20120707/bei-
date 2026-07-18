@@ -18,6 +18,8 @@ async function builtinDecks() {
     loadDeck("junior-high", "初中英语核心词汇", "junior-high.tsv"),
     loadDeck("junior-s", "初中英语 S 级核心词汇", "junior-s.tsv"),
     loadDeck("junior-a", "初中英语 A 级阅读词汇", "junior-a.tsv"),
+    loadDeck("guangdong-zhongkao-1600", "广东中考课标词汇（1600+）", "guangdong-zhongkao-1600.tsv"),
+    loadDeck("guangdong-zhongkao-core-800", "广东／中山中考高频核心 800 词", "guangdong-zhongkao-core-800.tsv"),
   ]);
 }
 
